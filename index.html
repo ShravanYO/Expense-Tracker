@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Obsidian — Expense Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ====== AUTH SCREEN ====== -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">Obsidian</div>
+    <div class="auth-tagline">Personal Finance · Refined</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchTab('register')">Register</button>
+    </div>
+    <div class="auth-form" id="login-form">
+      <div class="field">
+        <div class="field-label">Username</div>
+        <input class="field-input" type="text" id="login-user" placeholder="your username" autocomplete="off"/>
+      </div>
+      <div class="field">
+        <div class="field-label">Password</div>
+        <input class="field-input" type="password" id="login-pass" placeholder="••••••••"/>
+      </div>
+      <div class="auth-error" id="login-error">Invalid credentials.</div>
+      <button class="btn-primary" onclick="doLogin()">Enter</button>
+    </div>
+    <div class="auth-form" id="register-form" style="display:none">
+      <div class="field">
+        <div class="field-label">Full Name</div>
+        <input class="field-input" type="text" id="reg-name" placeholder="your name"/>
+      </div>
+      <div class="field">
+        <div class="field-label">Username</div>
+        <input class="field-input" type="text" id="reg-user" placeholder="choose username" autocomplete="off"/>
+      </div>
+      <div class="field">
+        <div class="field-label">Password</div>
+        <input class="field-input" type="password" id="reg-pass" placeholder="min 4 characters"/>
+      </div>
+      <div class="field">
+        <div class="field-label">Monthly Budget (₹)</div>
+        <input class="field-input" type="number" id="reg-budget" placeholder="e.g. 30000"/>
+      </div>
+      <div class="auth-error" id="reg-error">Username taken.</div>
+      <button class="btn-primary" onclick="doRegister()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== BUDGET MODAL ====== -->
+<div class="modal-overlay" id="budget-modal">
+  <div class="modal">
+    <button class="btn-close" onclick="closeBudgetModal()">✕</button>
+    <div class="modal-title">Set Budget</div>
+    <div class="modal-sub">Monthly spending limit</div>
+    <div class="form-grid">
+      <div class="field">
+        <div class="field-label">Budget Amount (₹)</div>
+        <input class="field-input" type="number" id="budget-input" placeholder="e.g. 30000"/>
+      </div>
+      <button class="btn-primary" onclick="saveBudget()">Save Budget</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== MAIN APP ====== -->
+<div id="app">
+  <div class="topbar">
+    <div class="logo">Obsidian</div>
+    <div class="topbar-right">
+      <div class="user-pill">
+        <div class="user-avatar" id="user-avatar">U</div>
+        <span id="user-display">User</span>
+      </div>
+      <button class="btn-ghost" onclick="openBudgetModal()">⚙ Budget</button>
+      <button class="btn-ghost" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- Month Nav -->
+    <div class="month-nav">
+      <div class="month-title" id="month-label">January 2025</div>
+      <div class="month-controls">
+        <button class="btn-icon" onclick="changeMonth(-1)">‹</button>
+        <button class="btn-icon" onclick="changeMonth(1)">›</button>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <div class="summary-card total">
+        <div class="card-label">Net Balance</div>
+        <div class="card-value gold" id="stat-balance">₹0</div>
+        <div class="card-sub" id="stat-txn-count">0 transactions</div>
+      </div>
+      <div class="summary-card income">
+        <div class="card-label">Total Income</div>
+        <div class="card-value green" id="stat-income">₹0</div>
+        <div class="card-sub" id="stat-income-count">0 entries</div>
+      </div>
+      <div class="summary-card spent">
+        <div class="card-label">Total Spent</div>
+        <div class="card-value red" id="stat-spent">₹0</div>
+        <div class="card-sub" id="stat-spent-count">0 entries</div>
+      </div>
+      <div class="summary-card budget">
+        <div class="card-label">Budget Used</div>
+        <div class="card-value purple" id="stat-budget-pct">0%</div>
+        <div class="card-sub" id="stat-budget-info">of ₹0 limit</div>
+        <div class="budget-bar-wrap">
+          <div class="budget-bar-track">
+            <div class="budget-bar-fill" id="budget-bar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts + Form -->
+    <div class="mid-grid">
+      <!-- Chart Panel -->
+      <div class="panel">
+        <div class="panel-title">Analytics</div>
+        <div class="chart-tabs">
+          <button class="chart-tab active" onclick="switchChart('donut')">By Category</button>
+          <button class="chart-tab" onclick="switchChart('bar')">Monthly Trend</button>
+        </div>
+        <div class="chart-container">
+          <canvas id="main-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Add Form -->
+      <div class="panel">
+        <div class="panel-title">New Transaction</div>
+        <div class="form-grid">
+          <div class="type-toggle">
+            <button class="type-btn active-expense" id="btn-expense" onclick="setType('expense')">− Expense</button>
+            <button class="type-btn" id="btn-income" onclick="setType('income')">+ Income</button>
+          </div>
+          <div class="field">
+            <div class="field-label">Description</div>
+            <input class="field-input" type="text" id="f-name" placeholder="e.g. Grocery run"/>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <div class="field-label">Amount (₹)</div>
+              <input class="field-input" type="number" id="f-amount" placeholder="0"/>
+            </div>
+            <div class="field">
+              <div class="field-label">Date</div>
+              <input class="field-input" type="date" id="f-date"/>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Category</div>
+            <select class="field-input" id="f-category">
+              <option value="food">🍜 Food & Dining</option>
+              <option value="rent">🏠 Rent & Housing</option>
+              <option value="transport">🚗 Transport</option>
+              <option value="health">💊 Health</option>
+              <option value="entertainment">🎬 Entertainment</option>
+              <option value="shopping">🛍 Shopping</option>
+              <option value="income">💰 Income</option>
+              <option value="other">📦 Other</option>
+            </select>
+          </div>
+          <button class="btn-primary" onclick="addTransaction()">Add Transaction</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expense List -->
+    <div class="list-panel">
+      <div class="list-header">
+        <div class="panel-title" style="margin:0; border:none; padding:0;">Transactions</div>
+        <div class="list-filters">
+          <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+          <button class="filter-btn" onclick="setFilter('expense', this)">Expenses</button>
+          <button class="filter-btn" onclick="setFilter('income', this)">Income</button>
+        </div>
+      </div>
+      <div class="expense-list" id="expense-list">
+        <div class="empty-state">
+          <div class="empty-icon">◈</div>
+          <div>No transactions yet.<br>Add your first entry above.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
